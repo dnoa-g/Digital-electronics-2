@@ -27,7 +27,7 @@ uint8_t segment_value[] = {
     0b00100101,     // Digit 2
     0b00001101,     // Digit 3
     0b10011001,     // Digit 4
-    0b00100101,     // Digit 5
+    0b00100101    // Digit 5
     0b01000001,     // Digit 6
     0b00011111,     // Digit 7
     0b00000001,     // Digit 8
