@@ -98,11 +98,6 @@ ISR(ADC_vect)
     lcd_gotoxy(8, 0);
     lcd_puts(lcd_string);
     
-    
-    
- 
-    
-    
     //Display ADC value in hexa at position "b"
     itoa(value, lcd_string, 16); //conver decimal values
     lcd_gotoxy(13, 0);
