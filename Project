@@ -1,1 +1,27 @@
 
+# YOUR_PROJECT_TITLE
+
+# Team members
+
+* İlyas Gökçe Sarp (responsible for schema)
+* Apostologiorgakis (they had not worked)
+* Stavrakis (they had not worked)
+Link to this file in your GitHub repository:
+
+[https://github.com/your-github-account/repository-name/project](https://github.com/...)
+
+### Table of contents
+
+* [Project objectives](#objectives)
+* [Hardware description](#hardware)
+* 2 HC-SR04 ultrasonic sensors
+* 1 HD44780-based LCD
+* 2 Potentiometer
+* 1 BJT
+* 1 Resistor
+* 1 Relay
+* 1 DC motor
+* [Libraries description](#libs)
+* [Main application](#main)
+* [Video](#video)
+* [References](#references)
