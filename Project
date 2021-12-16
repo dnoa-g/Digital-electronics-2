@@ -27,3 +27,333 @@ Link to this file in your GitHub repository:
 * [References](#references)
 # Comment: I wrote the code for nokia lcd but we didn't do it.
 ![PROJECT](https://user-images.githubusercontent.com/91589518/146460435-c2566276-6af1-4aaf-8f0a-625c6a270105.png)
+
+### Code
+
+#ifdef F_CPU
+#define F_CPU 16000000UL
+#endif
+
+#define MOSI 3
+#define MISO 4
+#define SCK 5
+#define SS 2
+
+#define RST 0
+
+#define DC 1
+
+unsigned char Dist_value[8] = {0,0,0,0,0,0,0,0};
+	
+static const unsigned char LVL_DIST[8][8] =
+{
+	{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80},
+	{0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0},
+	{0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0},
+	{0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0},
+	{0xF8, 0xF8, 0xF8, 0xF8, 0xF8, 0xF8, 0xF8, 0xF8},
+	{0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC},
+	{0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE},
+	{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},			
+};
+
+ static const unsigned char DIG[11][8] =
+ {
+	 {0x3E, 0x51, 0x49, 0x45, 0x3E, 0x00, 0x00, 0x00},
+	 {0x00, 0x42, 0x7F, 0x40, 0x00, 0x00, 0x00, 0x00},
+	 {0x42, 0x61, 0x51, 0x49, 0x46, 0x00, 0x00, 0x00},
+	 {0x21, 0x41, 0x45, 0x4B, 0x31, 0x00, 0x00, 0x00},
+	 {0x18, 0x14, 0x12, 0x7F, 0x10, 0x00, 0x00, 0x00},
+	 {0x27, 0x45, 0x45, 0x45, 0x39, 0x00, 0x00, 0x00},
+	 {0x3C, 0x4A, 0x49, 0x49, 0x30, 0x00, 0x00, 0x00},
+	 {0x01, 0x71, 0x09, 0x05, 0x03, 0x00, 0x00, 0x00},
+	 {0x36, 0x49, 0x49, 0x49, 0x36, 0x00, 0x00, 0x00},	 		 	 	
+	 {0x06, 0x49, 0x49, 0x29, 0x1E, 0x00, 0x00, 0x00},	 
+	 {0x00, 0x41, 0x22, 0x14, 0x08, 0x00, 0x00, 0x00},	 
+ };
+ 
+ static const unsigned char MIN_MAX[25] =
+ {
+	 0x0E, 0x01, 0x0E, 0x01, 0x0E, 0x00, 0x0E, 0x05, 0x0E, 0x00, 0x0D, 0x02, 0x0D, 
+	 0xE0, 0x10, 0xE0, 0x10, 0xE0, 0x00, 0xF0, 0x00, 0xF0, 0x20, 0x40, 0xF0, 
+ };
+ 
+ const unsigned char DIST[15] =
+ {
+	 0x3E, 0x22, 0x1C, 0x00, 0x3A, 0x00, 0x24, 0x2A, 0x12, 0x00, 0x02, 0x3E, 0x02, 0x00, 0x14
+ };
+ 
+ const unsigned char CM[9] =
+ {
+	 0x1C, 0x22, 0x22, 0x00, 0x3C, 0x02, 0x3C, 0x02, 0x3C	 
+ };
+ 
+ volatile unsigned short hc_sr04_cnt;
+#include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+
+void Port_Init()
+{
+	DDRB = (1<<MOSI) | (1<<SCK) | (1<<SS) | (1<<RST) | (1<<DC);
+	PORTB |= (1<<RST);
+	PORTB |= (1<<SS);
+	
+	DDRD=0b00001000;
+	PORTD=0b00000000;
+	
+	EIMSK |= (1<<INT0);
+	EICRA |= (1<<ISC00);
+	
+	TCCR1B = (0<<CS) | (1<<CS11) | (1<<CS10);
+	
+}
+
+ISR( INT0_vect)
+{
+	if(PIND & (1 << 2)) {TCNT1 = 0;}
+	
+	else {hc_sr04_cnt = TCNT1;}
+}
+
+unsigned char hc_sr04_meas( void )
+{
+
+	hc_sr04_cnt = 0;
+	
+	PORTD = (1 << 3);
+	_delay_us( 10 );
+	PORTD &= ~(1 << 3);
+	while( hc_sr04_cnt == 0);
+	
+	if (hc_sr04_cnt<3700) {return 0.000004 * hc_sr04_cnt/2 * 34300;} else {return 41;}
+}
+void SPI_Init()
+{
+	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
+}
+
+void SPI_SS_Enable()
+{
+	PORTB &= ~(1<<SS); 
+}
+void SPI_SS_Disable()
+{
+	PORTB |= (1<<SS); 
+}
+void SPI_Tranceiver (unsigned char data)
+{
+	SPDR = data;
+	
+	while(!(SPSR & (1<<SPIF) )); 
+}
+void Display_Reset()
+{
+	PORTB &= ~(1<<RST);
+	_delay_ms(100);
+	PORTB = (1<<RST);
+}
+
+void Display_Cmnd(unsigned char data)
+{
+	PORTB &= ~(1<<DC); 
+	SPI_Tranceiver(data); 
+	PORTB |= (1<<DC); 
+}
+void Display_init()
+{
+	Display_Reset(); 
+	Display_Cmnd (0x21); 
+	Display_Cmnd(0xC0); 
+	Display_Cmnd (0x07); 
+	Display_Cmnd (0x13); 
+	Display_Cmnd (0x20); 
+	Display_Cmnd (0x0C);
+}
+
+void Display_SetXY(unsigned char x, unsigned char y)
+{
+	Display_Cmnd (0x80|x); 
+	Display_Cmnd (0x40|y); 
+}
+void Off_Dig(unsigned char x, unsigned char y)
+{
+	Display_SetXY(x,y); 
+	for (int index=0; index<5; index++)
+	{SPI_Tranceiver(0);}
+}
+void Display_Dig(unsigned char dig, unsigned char x, unsigned char y)
+{
+	Display_SetXY(x,y); 
+	for (int index=0; index<5; index++)
+	{
+		SPDR = DIG[dig][index]; 
+		while(!(SPSR & (1<<SPIF) )); 
+		_delay_ms(10);
+	}
+}
+
+void Display_level()
+{
+	for (int i=0; i<8; i++)
+	{
+		unsigned int lvl = Dist_value[i] / 8;
+		for (int index=1; index<5; index++)
+		{
+			Display_SetXY(15+i*8, index); 
+			for (int index1=0; index1<8; index1++)
+			{SPI_Tranceiver(0);}
+		}
+		for (int index=0; index<lvl; index++)
+		{
+			Display_SetXY(15+i*8,5-index);
+			for (int index1=0; index1<8; index1++)
+			{
+				SPDR = LVL_DIST[7][index1]; 
+				while(!(SPSR & (1<<SPIF) )); 
+			} 
+		}
+		if ((Dist_value[i]-lvl * 8) > 0)
+		{
+			Display_SetXY(15+i*8,5-lvl);
+			for (int index1=0; index1<8; index1++)
+			{
+				SPDR = LVL_DIST[Dist_value[i]-lvl * 8][index1];
+				while( ! (SPSR & (1<<SPIF) )); 
+			} 
+		}
+		_delay_ms(10);
+	}
+}
+
+void Display_Dist(unsigned char buffer)
+{
+	unsigned char temp_int_0, temp_int_1; 
+	if (buffer==41) 
+	{
+		Display_Dig(10,35,0); 
+		Display_Dig(4,42,0); 
+		Display_Dig(0,48,0); 
+	}
+	else 
+	{
+		Off_Dig(35,0); 
+		temp_int_0 - buffer % 100 / 10; 
+		temp_int_1 = buffer % 10;
+		if(temp_int_0 > 0) 
+		{
+			Display_Dig(temp_int_0,42,0);
+			Display_Dig(temp_int_1,48,0);
+		}
+		else
+		{
+			if(temp_int_1 > 0)
+			{
+				Off_Dig(42,0);
+				Display_Dig(temp_int_1,48,0);
+			}
+		}
+	}
+}
+
+
+void Display_label()
+{
+	
+	Display_SetXY (20,0); 
+	for (int index=0; index<15; index++)
+	{
+		SPDR = DIST[index]; 
+		while(!(SPSR & (1<<SPIF) )); 
+		_delay_ms(10);
+	}
+	Display_SetXY(55,0); 
+	for (int index=0; index<9; index++)
+	{
+		SPDR = CM[index]; 
+		while(!(SPSR & (1<<SPIF) )); 
+		_delay_ms(10);
+	}
+	
+	Display_SetXY(0,1); 
+	for (int index=0; index<13; index++)
+	{
+		SPDR = MIN_MAX[index];
+		while(!(SPSR & (1<<SPIF) )); 
+		_delay_ms(10);
+	}
+	Display_SetXY(0,5); 
+	for (int index=13; index<25; index++)
+	{
+		SPDR = MIN_MAX[ index]; 
+		while(!(SPSR & (1<<SPIF) ));
+		_delay_ms(10);
+	}
+		for (int index=1; index<6; index++)
+		{
+			Display_SetXY(14, index);
+			SPDR = 0xFF;
+			while(!(SPSR & (1<<SPIF) ));
+			_delay_ms(10);
+		}
+		
+		
+		Display_SetXY(14,5); 
+		SPDR = 0xFF; 
+		while(!(SPSR & (1<<SPIF) )); 
+		Display_SetXY(15,5); 
+		for (int index=0; index<69; index++)
+		{
+			SPDR = 0x80; 
+			while(!(SPSR & (1<<SPIF) )); 
+			_delay_ms(10);
+		}
+	}
+	void Display_Clear()
+	{
+		PORTB = (1<<DC); 
+		for (int k=0; k<=503; k++){ SPI_Tranceiver (0x00); }
+		PORTB &= ~(1<<DC);
+	}
+	void Add_Dist_value(unsigned char value)
+	{
+		for (int i=7; i>0; i--)
+		Dist_value[i] = Dist_value[i-1];
+		Dist_value[0] = value;
+	}
+	
+	int main(void)
+	{
+		unsigned char sm; 
+		Port_Init(); 
+		SPI_Init(); 
+		SPI_SS_Enable(); 
+		Display_init(); 
+		Display_Clear();
+		Display_label();
+		sei(); 
+		
+		while (1)
+		{
+			sm = hc_sr04_meas(); 
+			if (sm > 40) {sm=40;Display_Dist(41);} else {Display_Dist(sm);}
+			Add_Dist_value(sm); 
+			Display_level();
+			_delay_ms( 200 );
+		}
+	}
+
+
+		
+
+
+
+
+	
+
+
+
+
+
+ 
+ 
